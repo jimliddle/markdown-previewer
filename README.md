@@ -2,6 +2,11 @@
 
 A fast, fully responsive, and completely client-side Markdown editor built into a single HTML file. Markdown Editor/Viewer provides real-time previews, offline capabilities, and native OS integrations—all without needing a backend or complex build step.
 
+https://jimliddle.github.io/markdown-previewer/
+
+<img width="952.5" height="471.5" alt="Markdown editor/Previewer screenshot" src="https://github.com/user-attachments/assets/1803b67f-402f-4342-aa02-c87513aa7f79" />
+
+
 ## ✨ Features
 
 Single-File Architecture: The entire app (HTML, CSS, JS, and PWA assets) is contained within a single index.html file. Just drop it anywhere and it works.
@@ -25,12 +30,12 @@ Markdown Help Guide: A quick-reference cheat sheet for standard Markdown syntax.
 ## 🚀 Getting Started
 
 
-Option 1: Quick Run (View Only)
+Option 1: View Only
 
 Simply download index.html and double-click it to open it in your browser (file:/// protocol).
 Note: The core editor will work perfectly, but browser security restrictions prevent PWA installation and native OS file-handling from file:/// URLs.
 
-Option 2: Full Experience (Local Server)
+Option 2: Local Server (or just access: https://jimliddle.github.io/markdown-previewer/)
 
 To unlock PWA installation and File Handler APIs, you need to serve the file over localhost or https://.
 
