@@ -124,6 +124,11 @@
             </button>
             <input type="file" id="file-input" accept=".md,.txt" class="hidden">
             
+            <button id="btn-save" class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-md font-medium transition-colors text-sm" title="Save File">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Save</span>
+            </button>
+
             <button id="btn-install" class="hidden items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-md font-medium transition-colors text-sm">
                 <i data-lucide="download" class="w-4 h-4"></i>
                 <span class="hidden sm:inline">Install App</span>
@@ -329,6 +334,46 @@
             };
             reader.readAsText(file);
             e.target.value = ''; // Reset input
+        });
+
+        // Save File Handling
+        document.getElementById('btn-save').addEventListener('click', async () => {
+            const content = editor.value;
+            
+            // Try modern File System Access API first (Desktop)
+            if ('showSaveFilePicker' in window) {
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: 'document.md',
+                        types: [{
+                            description: 'Markdown File',
+                            accept: {'text/markdown': ['.md']},
+                        }],
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+                    showToast("File saved successfully");
+                } catch (err) {
+                    // Ignore AbortError (user clicked cancel)
+                    if (err.name !== 'AbortError') {
+                        console.error('Save failed:', err);
+                        showToast("Failed to save file", "error");
+                    }
+                }
+            } else {
+                // Fallback for mobile and older browsers (triggers a download)
+                const blob = new Blob([content], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'document.md';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast("File downloaded");
+            }
         });
 
         // Clear Data Handling
