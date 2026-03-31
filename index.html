@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Editor/Viewer</title>
+    
+    <!-- Dynamic Manifest Link for PWA -->
+    <link id="manifest-link" rel="manifest" href="">
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- DOMPurify for sanitizing HTML output (Security) -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    
+    <!-- LocalForage for easy IndexedDB usage -->
+    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Markdown Preview Styling */
+        .markdown-body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1f2937;
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+        .markdown-body h1 { font-size: 2.25em; font-weight: bold; margin-bottom: 0.5em; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3em; margin-top: 1em; }
+        .markdown-body h1:first-child { margin-top: 0; }
+        .markdown-body h2 { font-size: 1.75em; font-weight: bold; margin-bottom: 0.5em; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3em; margin-top: 1em;}
+        .markdown-body h3 { font-size: 1.35em; font-weight: bold; margin-bottom: 0.5em; margin-top: 1em; }
+        .markdown-body p { margin-bottom: 1em; }
+        .markdown-body a { color: #3b82f6; text-decoration: none; }
+        .markdown-body a:hover { text-decoration: underline; }
+        .markdown-body ul { list-style-type: disc; padding-left: 2em; margin-bottom: 1em; }
+        .markdown-body ol { list-style-type: decimal; padding-left: 2em; margin-bottom: 1em; }
+        .markdown-body li + li { margin-top: 0.25em; }
+        .markdown-body code { background-color: #f3f4f6; padding: 0.2em 0.4em; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.9em; color: #ef4444;}
+        .markdown-body pre { background-color: #1f2937; color: #f8f8f2; padding: 1em; border-radius: 6px; overflow-x: auto; margin-bottom: 1em; }
+        .markdown-body pre code { background-color: transparent; padding: 0; color: inherit; font-size: 0.9em;}
+        .markdown-body blockquote { border-left: 4px solid #d1d5db; padding-left: 1em; color: #6b7280; font-style: italic; margin-bottom: 1em; background: #f9fafb; padding-top: 0.5em; padding-bottom: 0.5em; border-radius: 0 4px 4px 0;}
+        .markdown-body img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin: 1em 0;}
+        .markdown-body table { border-collapse: collapse; width: 100%; margin-bottom: 1em; border: 1px solid #e5e7eb; }
+        .markdown-body th, .markdown-body td { border: 1px solid #e5e7eb; padding: 0.75em 1em; text-align: left; }
+        .markdown-body th { background-color: #f9fafb; font-weight: 600; }
+        .markdown-body tr:nth-child(even) { background-color: #f9fafb; }
+        .markdown-body hr { height: 1px; background-color: #e5e7eb; border: none; margin: 2em 0; }
+
+        /* Print Styling */
+        @media print {
+            body {
+                height: auto !important;
+                overflow: visible !important;
+                background-color: white !important;
+            }
+            header, 
+            #editor-section, 
+            .preview-label,
+            #toast, 
+            #help-modal {
+                display: none !important;
+            }
+            main {
+                display: block !important;
+            }
+            #preview-section {
+                display: block !important;
+                width: 100% !important;
+                height: auto !important;
+                border: none !important;
+            }
+            #preview-container {
+                overflow: visible !important;
+                height: auto !important;
+                padding: 0 !important;
+            }
+            .markdown-body {
+                max-width: none !important;
+            }
+        }
+
+        /* Mobile View Toggle Styling */
+        @media (max-width: 767px) {
+            body.mobile-mode-editor #preview-section { display: none !important; }
+            body.mobile-mode-preview #editor-section { display: none !important; }
+        }
+    </style>
+</head>
+<body class="mobile-mode-editor h-screen w-screen flex flex-col bg-gray-50 overflow-hidden font-sans text-gray-800">
+
+    <!-- Navbar -->
+    <header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0 shadow-sm z-10">
+        <div class="flex items-center gap-2 text-blue-600">
+            <i data-lucide="file-text" class="w-6 h-6"></i>
+            <h1 class="text-xl font-bold tracking-tight hidden sm:block">Markdown Editor/Viewer</h1>
+        </div>
+        
+        <div class="flex items-center gap-2 sm:gap-3">
+            <button id="btn-open" class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md font-medium transition-colors text-sm">
+                <i data-lucide="folder-open" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Open File</span>
+            </button>
+            <input type="file" id="file-input" accept=".md,.txt" class="hidden">
+            
+            <button id="btn-install" class="hidden items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-md font-medium transition-colors text-sm">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Install App</span>
+            </button>
+            
+            <button id="btn-clear" class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md font-medium transition-colors text-sm" title="Clear IndexedDB Storage">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Clear Data</span>
+            </button>
+
+            <button id="btn-print" class="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-md font-medium transition-colors text-sm" title="Print Document">
+                <i data-lucide="printer" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Print</span>
+            </button>
+
+            <button id="btn-help" class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-md font-medium transition-colors text-sm">
+                <i data-lucide="circle-help" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Help</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- Editor Section -->
+        <section id="editor-section" class="flex-1 flex flex-col md:border-r border-gray-200 bg-white relative">
+            <div class="bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider absolute top-0 left-0 w-full z-10 flex justify-between items-center">
+                <span>Editor</span>
+                <span id="save-status" class="text-green-500 flex items-center gap-1 hidden">
+                    <i data-lucide="check" class="w-3 h-3"></i> Saved securely
+                </span>
+            </div>
+            <textarea id="editor" class="flex-1 w-full h-full p-4 pt-8 resize-none focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 font-mono text-sm sm:text-base leading-relaxed bg-gray-50 text-gray-800" spellcheck="false" placeholder="Type your markdown here..."></textarea>
+        </section>
+
+        <!-- Preview Section -->
+        <section id="preview-section" class="flex-1 bg-white relative flex flex-col">
+            <div class="preview-label bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider absolute top-0 left-0 w-full z-10 border-b border-gray-200">
+                Preview
+            </div>
+            <div id="preview-container" class="flex-1 overflow-y-auto p-6 pt-10 sm:p-8 sm:pt-12">
+                <div id="preview" class="markdown-body max-w-3xl mx-auto"></div>
+            </div>
+        </section>
+        
+    </main>
+
+    <!-- Mobile View Toggle Button (FAB) -->
+    <button id="btn-mobile-toggle" class="md:hidden fixed bottom-6 right-6 z-40 bg-blue-600 text-white p-3.5 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95" title="Toggle View">
+        <i data-lucide="eye" id="toggle-icon" class="w-6 h-6"></i>
+    </button>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="text-xl font-bold flex items-center gap-2"><i data-lucide="book-open" class="w-5 h-5 text-blue-600"></i> Markdown Guide</h2>
+                <button id="btn-close-help" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-700">
+                            <th class="p-3 border border-gray-200 font-semibold rounded-tl-lg">Element</th>
+                            <th class="p-3 border border-gray-200 font-semibold">Markdown Syntax</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm">
+                        <tr><td class="p-3 border border-gray-200">Heading 1</td><td class="p-3 border border-gray-200 font-mono bg-gray-50"># Heading 1</td></tr>
+                        <tr><td class="p-3 border border-gray-200">Heading 2</td><td class="p-3 border border-gray-200 font-mono bg-gray-50">## Heading 2</td></tr>
+                        <tr><td class="p-3 border border-gray-200">Bold</td><td class="p-3 border border-gray-200 font-mono bg-gray-50">**bold text**</td></tr>
+                        <tr><td class="p-3 border border-gray-200">Italic</td><td class="p-3 border border-gray-200 font-mono bg-gray-50">*italic text*</td></tr>
+                        <tr><td class="p-3 border border-gray-200">Blockquote</td><td class="p-3 border border-gray-200 font-mono bg-gray-50">&gt; blockquote</td></tr>
+                        <tr><td class="p-3 border border-gray-200">Ordered List</td><td class="p-3 border border-gray-200 font-mono bg-gray-50">1. First item<br>2. Second item</td></tr>
+                        <tr><td class="p-3 border border-gray-200">Unordered List</td><td class="p-3 border border-gray-200 font-mono bg-gray-50">- First item<br>- Second item</td></tr>
+                        <tr><td class="p-3 border border-gray-200">Code</td><td class="p-3 border border-gray-200 font-mono bg-gray-50">`code`</td></tr>
+                        <tr><td class="p-3 border border-gray-200">Code Block</td><td class="p-3 border border-gray-200 font-mono bg-gray-50">```javascript<br>let x = 1;<br>```</td></tr>
+                        <tr><td class="p-3 border border-gray-200">Link</td><td class="p-3 border border-gray-200 font-mono bg-gray-50">[Title](https://www.example.com)</td></tr>
+                        <tr><td class="p-3 border border-gray-200 border-b-0 rounded-bl-lg">Image</td><td class="p-3 border border-gray-200 border-b-0 font-mono bg-gray-50">![alt text](image.jpg)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-xl text-right">
+                <button id="btn-close-help-bottom" class="px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 transition-transform duration-300 translate-y-24 z-50">
+        <i id="toast-icon" data-lucide="info" class="w-5 h-5 text-blue-400"></i>
+        <span id="toast-msg" class="text-sm font-medium">Notification</span>
+    </div>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // Constants & State
+        const STORAGE_KEY = 'markdown_studio_content';
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        const previewContainer = document.getElementById('preview-container');
+        const saveStatus = document.getElementById('save-status');
+        let saveTimeout;
+        let isSyncingScroll = false;
+        
+        // PWA Setup Variables
+        let deferredPrompt;
+
+        // --- Core Application Logic ---
+
+        // Initialize LocalForage (IndexedDB wrapper)
+        localforage.config({
+            name: 'MarkdownStudio',
+            storeName: 'documents',
+            description: 'Secure local storage for markdown files'
+        });
+
+        // Parse and render Markdown safely
+        function updatePreview() {
+            const rawText = editor.value;
+            // Parse with Marked.js
+            const rawHtml = marked.parse(rawText, { gfm: true, breaks: true });
+            // Sanitize with DOMPurify to prevent XSS
+            const cleanHtml = DOMPurify.sanitize(rawHtml);
+            preview.innerHTML = cleanHtml;
+        }
+
+        // Save to IndexedDB automatically
+        function triggerAutoSave() {
+            clearTimeout(saveTimeout);
+            saveStatus.classList.add('hidden');
+            saveTimeout = setTimeout(async () => {
+                try {
+                    await localforage.setItem(STORAGE_KEY, editor.value);
+                    saveStatus.classList.remove('hidden');
+                    setTimeout(() => saveStatus.classList.add('hidden'), 2000);
+                } catch (err) {
+                    console.error("Storage failed:", err);
+                    showToast("Failed to save progress locally", "error");
+                }
+            }, 800); // 800ms debounce
+        }
+
+        // Load initial content
+        async function loadInitialData() {
+            try {
+                const savedData = await localforage.getItem(STORAGE_KEY);
+                if (savedData !== null) {
+                    editor.value = savedData;
+                } else {
+                    editor.value = "# Welcome to Markdown Studio\n\nThis app securely stores your notes in your browser using **IndexedDB**.\n\n- Try typing on the left.\n- See changes on the right instantly.\n- Click **Help** for syntax tips.";
+                }
+                updatePreview();
+            } catch (err) {
+                console.error("Load failed:", err);
+                showToast("Failed to load saved data", "error");
+            }
+        }
+
+        // --- Event Listeners ---
+
+        // Real-time updates
+        editor.addEventListener('input', () => {
+            updatePreview();
+            triggerAutoSave();
+        });
+
+        // Synchronized Scrolling (Editor -> Preview)
+        editor.addEventListener('scroll', () => {
+            if (isSyncingScroll) return;
+            isSyncingScroll = true;
+            
+            // Calculate percentage scrolled in the editor
+            const percentage = editor.scrollTop / (editor.scrollHeight - editor.clientHeight);
+            // Apply percentage to preview container
+            if (previewContainer.scrollHeight > previewContainer.clientHeight) {
+                previewContainer.scrollTop = percentage * (previewContainer.scrollHeight - previewContainer.clientHeight);
+            }
+            
+            setTimeout(() => { isSyncingScroll = false; }, 20);
+        });
+
+        // File handling
+        document.getElementById('btn-open').addEventListener('click', () => {
+            document.getElementById('file-input').click();
+        });
+
+        document.getElementById('file-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                editor.value = e.target.result;
+                updatePreview();
+                triggerAutoSave();
+                showToast(`Loaded ${file.name}`);
+            };
+            reader.readAsText(file);
+            e.target.value = ''; // Reset input
+        });
+
+        // Clear Data Handling
+        document.getElementById('btn-clear').addEventListener('click', async () => {
+            // Provide a clear option as requested
+            if (confirm("Are you sure you want to securely clear all your stored data from the browser? This action cannot be undone.")) {
+                try {
+                    await localforage.removeItem(STORAGE_KEY);
+                    editor.value = "";
+                    updatePreview();
+                    showToast("Data cleared successfully");
+                } catch (err) {
+                    showToast("Error clearing data", "error");
+                }
+            }
+        });
+
+        // Print Handling
+        document.getElementById('btn-print').addEventListener('click', () => {
+            window.print();
+        });
+
+        // Mobile View Toggle Handling
+        const btnMobileToggle = document.getElementById('btn-mobile-toggle');
+        const toggleIcon = document.getElementById('toggle-icon');
+        let isPreviewMode = false;
+
+        btnMobileToggle.addEventListener('click', () => {
+            isPreviewMode = !isPreviewMode;
+            if (isPreviewMode) {
+                document.body.classList.remove('mobile-mode-editor');
+                document.body.classList.add('mobile-mode-preview');
+                toggleIcon.setAttribute('data-lucide', 'pen-line');
+            } else {
+                document.body.classList.remove('mobile-mode-preview');
+                document.body.classList.add('mobile-mode-editor');
+                toggleIcon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        });
+
+        // Modal Handling
+        const helpModal = document.getElementById('help-modal');
+        const openHelpBtns = [document.getElementById('btn-help')];
+        const closeHelpBtns = [document.getElementById('btn-close-help'), document.getElementById('btn-close-help-bottom')];
+
+        const toggleModal = (show) => {
+            if (show) {
+                helpModal.classList.remove('hidden');
+                // Trigger reflow for transition
+                void helpModal.offsetWidth;
+                helpModal.classList.remove('opacity-0');
+            } else {
+                helpModal.classList.add('opacity-0');
+                setTimeout(() => helpModal.classList.add('hidden'), 200);
+            }
+        };
+
+        openHelpBtns.forEach(btn => btn.addEventListener('click', () => toggleModal(true)));
+        closeHelpBtns.forEach(btn => btn.addEventListener('click', () => toggleModal(false)));
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) toggleModal(false);
+        });
+
+        // Toast Notification System
+        function showToast(message, type = "success") {
+            const toast = document.getElementById('toast');
+            const msgNode = document.getElementById('toast-msg');
+            const iconNode = document.getElementById('toast-icon');
+            
+            msgNode.textContent = message;
+            if (type === "error") {
+                iconNode.setAttribute('data-lucide', 'alert-circle');
+                iconNode.classList.replace('text-blue-400', 'text-red-400');
+            } else {
+                iconNode.setAttribute('data-lucide', 'check-circle-2');
+                iconNode.classList.replace('text-red-400', 'text-green-400');
+            }
+            lucide.createIcons();
+            
+            toast.classList.remove('translate-y-24');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24');
+            }, 3000);
+        }
+
+        // --- PWA & Desktop Integration ---
+
+        // 1. Generate PWA assets dynamically to keep everything in one file
+        const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="#1e293b"/><path fill="#ffffff" d="M120 350 V150 l60 60 l60 -60 v200 h-30 V220 l-30 30 l-30 -30 v130 Z M320 150 v130 h-40 l70 70 l70 -70 h-40 V150 Z" /></svg>`;
+        const iconBase64 = btoa(svgIcon);
+        const iconDataUrl = `data:image/svg+xml;base64,${iconBase64}`;
+
+        const manifest = {
+            name: "Markdown Studio",
+            short_name: "MD Studio",
+            start_url: location.pathname,
+            display: "standalone",
+            background_color: "#f9fafb",
+            theme_color: "#2563eb",
+            icons: [
+                {
+                    src: iconDataUrl,
+                    sizes: "512x512",
+                    type: "image/svg+xml",
+                    purpose: "any maskable"
+                }
+            ],
+            // Windows/Desktop File Handler Association
+            file_handlers: [
+                {
+                    action: location.pathname,
+                    accept: {
+                        "text/markdown": [".md"],
+                        "text/plain": [".txt"]
+                    }
+                }
+            ]
+        };
+
+        // Inject manifest
+        const manifestString = JSON.stringify(manifest);
+        const manifestBlob = new Blob([manifestString], {type: 'application/json'});
+        document.getElementById('manifest-link').href = URL.createObjectURL(manifestBlob);
+
+        // Optional Service Worker for offline capability & forced PWA prompt
+        const swContent = `
+            self.addEventListener('install', (e) => self.skipWaiting());
+            self.addEventListener('activate', (e) => self.clients.claim());
+            self.addEventListener('fetch', (e) => {});
+        `;
+        
+        if ('serviceWorker' in navigator) {
+            try {
+                const swBlob = new Blob([swContent], { type: 'application/javascript' });
+                navigator.serviceWorker.register(URL.createObjectURL(swBlob))
+                    .catch(() => console.log('SW registration skipped (expected in local/data URI context)'));
+            } catch(e) {}
+        }
+
+        // Handle PWA Install Prompt
+        const installBtn = document.getElementById('btn-install');
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            deferredPrompt = e;
+            // Update UI notify the user they can install the PWA
+            installBtn.classList.remove('hidden');
+            installBtn.classList.add('flex');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // Show the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    installBtn.classList.add('hidden');
+                }
+                // We've used the prompt, and can't use it again, throw it away
+                deferredPrompt = null;
+            }
+        });
+
+        // Hide install button if app is already running as standalone (PWA)
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            installBtn.classList.add('hidden');
+        }
+
+        // 2. Handle File Associations (Window LaunchQueue API)
+        // This triggers when the user right-clicks a file in Windows and selects "Open with -> Markdown Studio"
+        if ('launchQueue' in window) {
+            window.launchQueue.setConsumer(async (launchParams) => {
+                if (launchParams.files && launchParams.files.length > 0) {
+                    const fileHandle = launchParams.files[0];
+                    try {
+                        const file = await fileHandle.getFile();
+                        const content = await file.text();
+                        editor.value = content;
+                        updatePreview();
+                        showToast(`Opened ${file.name} from OS`);
+                    } catch (e) {
+                        console.error('Failed to read file from launch queue', e);
+                        showToast("Failed to open file", "error");
+                    }
+                }
+            });
+        }
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', loadInitialData);
+
+    </script>
+</body>
+</html>
