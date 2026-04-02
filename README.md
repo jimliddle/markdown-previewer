@@ -1,4 +1,4 @@
-## 📝 Markdown Editor/Viewer
+## Markdown Editor/Viewer
 
 A fast, fully responsive, and completely client-side Markdown editor built into a single HTML file. Markdown Editor/Viewer provides real-time previews, offline capabilities, and native OS integrations—all without needing a backend or complex build step.
 
@@ -7,7 +7,7 @@ https://jimliddle.github.io/markdown-previewer/
 <img width="952.5" height="471.5" alt="Markdown editor/Previewer screenshot" src="https://github.com/user-attachments/assets/1803b67f-402f-4342-aa02-c87513aa7f79" />
 
 
-## ✨ Features
+## Features
 
 Single-File Architecture: The entire app (HTML, CSS, JS, and PWA assets) is contained within a single index.html file. Just drop it anywhere and it works.
 
@@ -27,7 +27,7 @@ Built-in Print Support: Clean, distraction-free printing that isolates the rende
 
 Markdown Help Guide: A quick-reference cheat sheet for standard Markdown syntax.
 
-## 🚀 Getting Started
+## Getting Started
 
 
 Option 1: View Only
@@ -53,9 +53,9 @@ Open http://localhost:8000 in your browser.
 
 Click the Install App button (or the install icon in your browser's address bar) to install it to your system.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-This project utilizes modern web standards and lightweight libraries delivered via CDN:
+Modern web standards and lightweight libraries delivered via CDN:
 
 Styling: Tailwind CSS
 
@@ -67,10 +67,10 @@ Security/Sanitization: DOMPurify
 
 Local Storage: LocalForage
 
-## 🔒 Security
+## Security
 
-All Markdown input is passed through DOMPurify before being rendered to the screen to prevent Cross-Site Scripting (XSS) attacks. Additionally, no data is ever transmitted over the network; everything is kept strictly on your local device.
+All Markdown input is passed through DOMPurify before being rendered to the screen to prevent Cross-Site Scripting (XSS) attacks. Additionally, no data is ever transmitted over the network; everything is kept strictly on the local browser / device.
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details. 
